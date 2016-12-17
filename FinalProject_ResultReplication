@@ -1,0 +1,243 @@
+#Set the working data
+setwd("C:/Users/Thy Nguyen/Documents/RStudio/CS112/Working")
+
+#Load the appropriate packages
+install.packages("MASS")
+library(Matching)
+install.packages("PSAgraphics")
+library(PSAgraphics)
+
+## Load the final data
+load("C:/Users/Thy Nguyen/Documents/RStudio/CS112/Working/FinalData")
+
+#Subset the data between males and females
+maledata <- subset(final.data, Female == 0)
+femaledata <- subset(final.data, Female == 1)
+
+
+######### Summary Statistics for the Male Sample ##########
+############# Used to Create Table 1 In Paper #############
+
+#Number in each group
+table(maledata$Queer)
+
+#Subset the data between queer males and heterosexual males
+queermale <- subset(maledata, Queer == 1)
+heteromale <- subset(maledata, Queer == 0)
+
+#Average weeks worked per year
+summary(heteromale$Weekswrk)
+summary(queermale$Weekswrk)
+
+#Average hours worked per week
+summary(heteromale$Hrswrk)
+summary(queermale$Hrswrk)
+
+#Average income
+summary(heteromale$Income)
+summary(queermale$Income)
+
+#Percent of in each degree level
+summary(heteromale$Lesshs)
+summary(heteromale$Hs)
+summary(heteromale$Assoc)
+summary(heteromale$Bach)
+summary(heteromale$Grad)
+
+summary(queermale$Lesshs)
+summary(queermale$Hs)
+summary(queermale$Assoc)
+summary(queermale$Bach)
+summary(queermale$Grad)
+
+#Average level of potential experience
+summary(heteromale$Exper)
+summary(queermale$Exper)
+
+#Percentage of nonwhite individuals in each group
+summary(heteromale$Nonwhite)
+summary(queermale$Nonwhite)
+
+#Average age
+summary(heteromale$Age)
+summary(queermale$Age)
+
+#Percentage married in each group
+summary(heteromale$Married)
+summary(queermale$Married)
+
+#Percentage that live in a large metropolitan area in each group
+summary(heteromale$Metro)
+summary(queermale$Metro)
+
+#Percentage in each occupational group
+summary(heteromale$Manprof)
+summary(heteromale$Service)
+summary(heteromale$Office)
+summary(heteromale$Natconst)
+summary(heteromale$Prodlabor)
+
+summary(queermale$Manprof)
+summary(queermale$Service)
+summary(queermale$Office)
+summary(queermale$Natconst)
+
+######### Summary Statistics for the Female Sample ##########
+############# Used to Create Table 2 In Paper #############
+
+#Number in each group
+table(femaledata$Queer)
+
+#Subset the data between queer females and heterosexual females
+queerfemale <- subset(femaledata, Queer == 1)
+heterofemale <- subset(femaledata, Queer == 0)
+
+#Average weeks worked per year
+summary(heterofemale$Weekswrk)
+summary(queerfemale$Weekswrk)
+
+#Average hours worked per week
+summary(heterofemale$Hrswrk)
+summary(queerfemale$Hrswrk)
+
+#Average income
+summary(heterofemale$Income)
+summary(queerfemale$Income)
+
+#Percent of in each degree level
+summary(heterofemale$Lesshs)
+summary(heterofemale$Hs)
+summary(heterofemale$Assoc)
+summary(heterofemale$Bach)
+summary(heterofemale$Grad)
+
+summary(queerfemale$Lesshs)
+summary(queerfemale$Hs)
+summary(queerfemale$Assoc)
+summary(queerfemale$Bach)
+summary(queerfemale$Grad)
+
+#Average level of potential experience
+summary(heterofemale$Exper)
+summary(queerfemale$Exper)
+
+#Percentage of nonwhite individuals in each group
+summary(heterofemale$Nonwhite)
+summary(queerfemale$Nonwhite)
+
+#Average age
+summary(heterofemale$Age)
+summary(queerfemale$Age)
+
+#Percentage married in each group
+summary(heterofemale$Married)
+summary(queerfemale$Married)
+
+#Percentage that live in a large metropolitan area in each group
+summary(heterofemale$Metro)
+summary(queerfemale$Metro)
+
+#Percentage in each occupational group
+summary(heterofemale$Manprof)
+summary(heterofemale$Service)
+summary(heterofemale$Office)
+summary(heterofemale$Natconst)
+summary(heterofemale$Prodlabor)
+
+summary(queerfemale$Manprof)
+summary(queerfemale$Service)
+summary(queerfemale$Office)
+summary(queerfemale$Natconst)
+summary(queerfemale$Prodlabor)
+
+########### Propensity Score Matching ###############
+################# Male Sample #######################
+############## Used to make Table 3 #################
+
+###   Estimate propensity scores using a logit model
+glm.logit.male <- glm(Queer ~ Weekswrk + Hrswrk +Nonwhite +  Hs + Assoc + 
+		Bach + Grad + 
+		Exper + Exper_sq + Married + Metro + Midwest + South +
+		West + Agri + Mine + Construct + Manu + Trans + Trade + Finance +
+		Busi + Enter + Prof + Public + Service +
+		Office + Natconst + Prodlabor, 
+		family = binomial(link = "logit"), data = maledata, x = TRUE)
+summary(glm.logit.male)
+#Note: I omit the ?Less Than High School? degree
+#category, the ?Northeast? region category, the
+#?Personal Services? industry category, and the
+#?Management, Professional, and Related
+#Occupations? occupation category to prevent perfect
+#collinearity and create my base groups for degree
+#attainment level, geographic region, industry, and
+#occupation.
+
+##  propensity scores will be the fitted values of the logit model
+propsmale <- glm.logit.male$fitted.values
+
+###  Check to ensure coverage for the range of propensity scores for both treated and non treated groups
+
+maleprops <- cbind(maledata, propsmale)
+Queermales <- subset(maleprops, maledata$Queer == 1)
+Heteromales <- subset(maleprops, maledata$Queer == 0)
+
+hist(Queermales$propsmale)
+hist(Heteromales$propsmale)
+
+###   Perform the matching and estimation of treatment effect with queer group as treatment group
+# First turn the maledata$Queer variable into a logical
+MaleQueerLogical <- ifelse(maledata$Queer == 1, TRUE, FALSE)
+
+pmatchmale <- Match(Y = maledata$LogIncome, Tr = MaleQueerLogical, X = propsmale, M = 5, replace = TRUE)  
+summary(pmatchmale)
+
+######## Used to make table 4 #############
+###   Diagnostics to see if you got a good balance
+MatchBalance(MaleQueerLogical ~ propsmale, match.out = pmatchmale, nboots = 100)
+
+############# Propensity Score Matching ###############
+################# Female Sample #######################
+############### Used to make Table 3 ##################
+
+###   Estimate propensity scores using a logit model
+glm.logit.female <- glm(Queer ~ Weekswrk + Hrswrk + 
+		Nonwhite +  Hs + Assoc + Bach + Grad + 
+		Exper + Exper_sq + Married + Metro + Midwest + South +
+		West + Agri + Mine + Construct + Manu + Trans + Trade + Finance +
+		Busi + Enter + Prof + Public + Service +
+		Office + Natconst + Prodlabor, 
+		family = binomial(link = "logit"), data = femaledata, x = TRUE)
+
+summary(glm.logit.female)
+#Note: I omit the ?Less Than High School? degree
+#category, the ?Northeast? region category, the
+#?Personal Services? industry category, and the
+#?Management, Professional, and Related
+#Occupations? occupation category to prevent perfect
+#collinearity and create my base groups for degree
+#attainment level, geographic region, industry, and
+#occupation.
+
+##  propensity scores will be the fitted values of the logit model
+propsfemale <- glm.logit.female$fitted.values
+
+###  Check to ensure coverage for the range of propensity scores for both treated and non treated groups
+
+femaleprops <- cbind(femaledata, propsfemale)
+Queerfemales <- subset(femaleprops, femaledata$Queer == 1)
+Heterofemales <- subset(femaleprops, femaledata$Queer == 0)
+
+hist(Queerfemales$propsfemale)
+hist(Heterofemales$propsfemale)
+
+###   Perform the matching and estimation of treatment effect with queer group as treatment group
+# First turn the femaledata$Queer variable into a logical
+FemaleQueerLogical <- ifelse(femaledata$Queer == 1, TRUE, FALSE)
+
+pmatchfemale <- Match(Y = femaledata$LogIncome, Tr = FemaleQueerLogical, X = propsfemale, M = 5, replace = TRUE)  
+summary(pmatchfemale)
+
+######## Used to make table 4 #############
+###   Diagnostics to see if you got a good balance
+MatchBalance(FemaleQueerLogical ~ propsfemale, match.out = pmatchfemale, nboots = 100)
+
