@@ -1,0 +1,52 @@
+## SET-UP
+
+#Set the working data
+setwd("C:/Users/Thy Nguyen/Documents/RStudio/CS112/Working")
+
+# Load the final data
+load("C:/Users/Thy Nguyen/Documents/RStudio/CS112/Working/FinalData")
+
+#Subset the data between males and females
+maledata <- subset(final.data, Female == 0)
+femaledata <- subset(final.data, Female == 1)
+
+## GENMATCH
+
+#Install packages 
+install.packages("Matching")
+library(Matching)
+install.packages("rgenoud")
+library(rgenoud)
+
+# Assign variables 
+Tr = femaledata$Queer
+X = cbind(femaledata$Weekswrk,femaledata$Hrswrk, 
+          femaledata$Nonwhite, femaledata$Hs, femaledata$Assoc, femaledata$Bach,
+          femaledata$Grad, femaledata$Exper, femaledata$Exper_sq, femaledata$Married, 
+          femaledata$Metro, femaledata$Midwest, femaledata$South, femaledata$West,
+          femaledata$Agri, femaledata$Mine, femaledata$Construct, femaledata$Manu,
+          femaledata$Trans, femaledata$Trade, femaledata$Finance, femaledata$Busi, 
+          femaledata$Enter, femaledata$Prof, femaledata$Public, femaledata$Service, 
+          femaledata$Office, femaledata$Natconst, femaledata$Prodlabor)
+Y = femaledata$Income
+
+set.seed(12345)
+ 
+Tr <- as.numeric(Tr)-1
+
+#Genetic Matching 
+genout <- GenMatch(Tr= Tr, X=X, estimand="ATT", M=1, pop.size=100, max.generations=50, wait.generations=20)
+# caliper = 0.1 -> Add to both lines GenMatch & Match 
+
+mout <- Match(Y = Y, X = X, Tr = Tr, estimand = "ATT", Weight.matrix = genout)
+summary(mout)
+
+mb <- MatchBalance(Tr ~ femaledata$Weekswrk + femaledata$Hrswrk + 
+                   femaledata$Nonwhite + femaledata$Hs + femaledata$Assoc + femaledata$Bach +
+                   femaledata$Grad + femaledata$Exper + femaledata$Exper_sq + femaledata$Married + 
+                   femaledata$Metro + femaledata$Midwest + femaledata$South + femaledata$West +
+                   femaledata$Agri + femaledata$Mine + femaledata$Construct + femaledata$Manu +
+                   femaledata$Trans + femaledata$Trade + femaledata$Finance + femaledata$Busi +
+                   femaledata$Enter + femaledata$Prof + femaledata$Public + femaledata$Service + 
+                   femaledata$Office + femaledata$Natconst + femaledata$Prodlabor, match.out = mout, nboots =1000)
+summary(mb)
